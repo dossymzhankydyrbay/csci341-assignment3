@@ -1,0 +1,46 @@
+CSCI 341 - Part 3 live HTTP CRUD demonstration
+Server: http://127.0.0.1:8973 
+
+[GET   ] /health                                  status=200
+[GET   ] /stats                                   status=200
+[GET   ] /catalog                                 status=200
+[GET   ] /schedule                                status=200
+
+[Users CRUD + author/reviewer profiles]
+[POST  ] /users                                   status=201
+[GET   ] /users/16                                status=200
+[PATCH ] /users/16                                status=200
+
+[Session CRUD]
+[POST  ] /sessions                                status=201
+[GET   ] /sessions/507                            status=200
+[PATCH ] /sessions/507                            status=200
+
+[Paper CRUD, author/keyword workflows, nested version CRUD]
+[POST  ] /papers                                  status=201
+[GET   ] /papers/15                               status=200
+[PATCH ] /papers/15                               status=200
+[POST  ] /papers/15/versions                      status=201
+[PATCH ] /papers/15/versions/3                    status=200
+[GET   ] /papers/15/versions                      status=200
+[DELETE] /papers/15/versions/1                    status=200
+
+[Required invalid session assignment rejection]
+[PATCH ] /papers/15                               status=422
+[PATCH ] /papers/15                               status=422
+[PATCH ] /sessions/507                            status=422
+
+[Reviews CRUD, self-review rejection, author-change rejection]
+[POST  ] /reviews                                 status=422
+[POST  ] /reviews                                 status=201
+[GET   ] /reviews/27                              status=200
+[PATCH ] /reviews/27                              status=200
+[PATCH ] /papers/15                               status=422
+
+ALL PART 3 HTTP DEMONSTRATIONS PASSED
+
+[Cleanup: delete created review, paper, session, user]
+ DELETE /reviews/27 200
+ DELETE /papers/15 200
+ DELETE /sessions/507 200
+ DELETE /users/16 200

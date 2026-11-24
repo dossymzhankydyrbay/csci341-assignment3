@@ -1,0 +1,24 @@
+# Render Blueprint: public FastAPI web service + PostgreSQL.
+# Render FREE PostgreSQL plans currently expire after 30 days: check grading dates.
+services:
+  - type: web
+    name: csci341-conference-review-manager
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn assignment3.web:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: csci341-conference-db
+          property: connectionString
+      - key: AUTO_SETUP
+        value: "true"
+      - key: PYTHON_VERSION
+        value: "3.12.9"
+databases:
+  - name: csci341-conference-db
+    databaseName: csci341_a3
+    user: csci341_app
+    plan: free

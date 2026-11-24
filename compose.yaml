@@ -1,0 +1,29 @@
+# Local persistent PostgreSQL + FastAPI, for development and demonstrations.
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: csci341_a3
+      POSTGRES_USER: csci341
+      POSTGRES_PASSWORD: local_demo_password
+    volumes:
+      - csci341_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U csci341 -d csci341_a3"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+  web:
+    build: .
+    environment:
+      DATABASE_URL: postgresql+psycopg2://csci341:local_demo_password@postgres:5432/csci341_a3
+      AUTO_SETUP: "true"
+      PORT: "8000"
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+volumes:
+  csci341_pgdata:

@@ -1,0 +1,1077 @@
+
+========================================================================================
+TASK 1 | CREATE: execute numbered 01_schema.sql statements
+========================================================================================
+-- 01_schema.sql, statement 1
+DROP VIEW IF EXISTS accepted_paper_schedule;
+-- result: statement executed
+
+-- 01_schema.sql, statement 2
+DROP TABLE IF EXISTS review CASCADE;
+-- result: statement executed
+
+-- 01_schema.sql, statement 3
+DROP TABLE IF EXISTS paper_version CASCADE;
+-- result: statement executed
+
+-- 01_schema.sql, statement 4
+DROP TABLE IF EXISTS paper_author CASCADE;
+-- result: statement executed
+
+-- 01_schema.sql, statement 5
+DROP TABLE IF EXISTS paper_keyword CASCADE;
+-- result: statement executed
+
+-- 01_schema.sql, statement 6
+DROP TABLE IF EXISTS paper CASCADE;
+-- result: statement executed
+
+-- 01_schema.sql, statement 7
+DROP TABLE IF EXISTS conference_session CASCADE;
+-- result: statement executed
+
+-- 01_schema.sql, statement 8
+DROP TABLE IF EXISTS track CASCADE;
+-- result: statement executed
+
+-- 01_schema.sql, statement 9
+DROP TABLE IF EXISTS conference_reviewer CASCADE;
+-- result: statement executed
+
+-- 01_schema.sql, statement 10
+DROP TABLE IF EXISTS conference_host CASCADE;
+-- result: statement executed
+
+-- 01_schema.sql, statement 11
+DROP TABLE IF EXISTS conference CASCADE;
+-- result: statement executed
+
+-- 01_schema.sql, statement 12
+DROP TABLE IF EXISTS reviewer_expertise CASCADE;
+-- result: statement executed
+
+-- 01_schema.sql, statement 13
+DROP TABLE IF EXISTS author_research_area CASCADE;
+-- result: statement executed
+
+-- 01_schema.sql, statement 14
+DROP TABLE IF EXISTS reviewer CASCADE;
+-- result: statement executed
+
+-- 01_schema.sql, statement 15
+DROP TABLE IF EXISTS author CASCADE;
+-- result: statement executed
+
+-- 01_schema.sql, statement 16
+DROP TABLE IF EXISTS app_user CASCADE;
+-- result: statement executed
+
+-- 01_schema.sql, statement 17
+CREATE TABLE app_user (
+    user_id INTEGER PRIMARY KEY,
+    given_name VARCHAR(100) NOT NULL,
+    surname VARCHAR(100) NOT NULL,
+    email VARCHAR(255) NOT NULL UNIQUE,
+    affiliation VARCHAR(200) NOT NULL,
+    country VARCHAR(100) NOT NULL,
+    phone_number VARCHAR(32),
+    CONSTRAINT user_name_nonblank CHECK (LENGTH(TRIM(given_name)) > 0 AND LENGTH(TRIM(surname)) > 0),
+    CONSTRAINT user_email_nonblank CHECK (LENGTH(TRIM(email)) > 0)
+);
+-- result: statement executed
+
+-- 01_schema.sql, statement 18
+CREATE TABLE author (
+    author_id INTEGER PRIMARY KEY REFERENCES app_user(user_id) ON DELETE CASCADE,
+    orcid VARCHAR(32) UNIQUE
+);
+-- result: statement executed
+
+-- 01_schema.sql, statement 19
+CREATE TABLE author_research_area (
+    author_id INTEGER NOT NULL REFERENCES author(author_id) ON DELETE CASCADE,
+    area_label VARCHAR(150) NOT NULL,
+    PRIMARY KEY (author_id, area_label),
+    CONSTRAINT author_area_nonblank CHECK (LENGTH(TRIM(area_label)) > 0)
+);
+-- result: statement executed
+
+-- 01_schema.sql, statement 20
+CREATE TABLE reviewer (
+    reviewer_id INTEGER PRIMARY KEY REFERENCES app_user(user_id) ON DELETE CASCADE,
+    years_experience INTEGER NOT NULL,
+    CONSTRAINT reviewer_experience_nonnegative CHECK (years_experience >= 0)
+);
+-- result: statement executed
+
+-- 01_schema.sql, statement 21
+CREATE TABLE reviewer_expertise (
+    reviewer_id INTEGER NOT NULL REFERENCES reviewer(reviewer_id) ON DELETE CASCADE,
+    area_label VARCHAR(150) NOT NULL,
+    PRIMARY KEY (reviewer_id, area_label),
+    CONSTRAINT expertise_nonblank CHECK (LENGTH(TRIM(area_label)) > 0)
+);
+-- result: statement executed
+
+-- 01_schema.sql, statement 22
+CREATE TABLE conference (
+    conference_id INTEGER PRIMARY KEY,
+    name VARCHAR(250) NOT NULL,
+    acronym VARCHAR(40) NOT NULL,
+    description TEXT NOT NULL,
+    city VARCHAR(100) NOT NULL,
+    country VARCHAR(100) NOT NULL,
+    start_date DATE NOT NULL,
+    end_date DATE NOT NULL,
+    submission_deadline DATE NOT NULL,
+    review_deadline DATE NOT NULL,
+    CONSTRAINT conference_date_order CHECK (end_date >= start_date)
+);
+-- result: statement executed
+
+-- 01_schema.sql, statement 23
+CREATE TABLE conference_host (
+    conference_id INTEGER NOT NULL REFERENCES conference(conference_id) ON DELETE CASCADE,
+    host_name VARCHAR(200) NOT NULL,
+    PRIMARY KEY (conference_id, host_name),
+    CONSTRAINT host_name_nonblank CHECK (LENGTH(TRIM(host_name)) > 0)
+);
+-- result: statement executed
+
+-- 01_schema.sql, statement 24
+CREATE TABLE conference_reviewer (
+    conference_id INTEGER NOT NULL REFERENCES conference(conference_id) ON DELETE CASCADE,
+    reviewer_id INTEGER NOT NULL REFERENCES reviewer(reviewer_id) ON DELETE RESTRICT,
+    PRIMARY KEY (conference_id, reviewer_id)
+);
+-- result: statement executed
+
+-- 01_schema.sql, statement 25
+CREATE TABLE track (
+    track_id INTEGER PRIMARY KEY,
+    conference_id INTEGER NOT NULL REFERENCES conference(conference_id) ON DELETE RESTRICT,
+    name VARCHAR(200) NOT NULL,
+    description TEXT NOT NULL,
+    research_area VARCHAR(150) NOT NULL,
+    coordinator_id INTEGER NOT NULL REFERENCES reviewer(reviewer_id) ON DELETE RESTRICT,
+    UNIQUE (conference_id, name)
+);
+-- result: statement executed
+
+-- 01_schema.sql, statement 26
+CREATE TABLE conference_session (
+    session_id INTEGER PRIMARY KEY,
+    conference_id INTEGER NOT NULL REFERENCES conference(conference_id) ON DELETE RESTRICT,
+    title VARCHAR(200) NOT NULL,
+    session_date DATE NOT NULL,
+    start_time TIME NOT NULL,
+    end_time TIME NOT NULL,
+    room_label VARCHAR(100) NOT NULL,
+    chair_id INTEGER NOT NULL REFERENCES reviewer(reviewer_id) ON DELETE RESTRICT,
+    CONSTRAINT session_time_order CHECK (end_time > start_time)
+);
+-- result: statement executed
+
+-- 01_schema.sql, statement 27
+CREATE TABLE paper (
+    paper_id INTEGER PRIMARY KEY,
+    track_id INTEGER NOT NULL REFERENCES track(track_id) ON DELETE RESTRICT,
+    title VARCHAR(300) NOT NULL,
+    abstract TEXT NOT NULL,
+    submission_date DATE NOT NULL,
+    status VARCHAR(30) NOT NULL,
+    session_id INTEGER REFERENCES conference_session(session_id) ON DELETE SET NULL,
+    CONSTRAINT valid_paper_status CHECK (status IN ('submitted','under review','accepted','rejected','withdrawn'))
+);
+-- result: statement executed
+
+-- 01_schema.sql, statement 28
+CREATE INDEX ix_paper_track ON paper(track_id);
+-- result: statement executed
+
+-- 01_schema.sql, statement 29
+CREATE INDEX ix_paper_session ON paper(session_id);
+-- result: statement executed
+
+-- 01_schema.sql, statement 30
+CREATE TABLE paper_keyword (
+    paper_id INTEGER NOT NULL REFERENCES paper(paper_id) ON DELETE CASCADE,
+    keyword VARCHAR(150) NOT NULL,
+    PRIMARY KEY (paper_id, keyword),
+    CONSTRAINT keyword_nonblank CHECK (LENGTH(TRIM(keyword)) > 0)
+);
+-- result: statement executed
+
+-- 01_schema.sql, statement 31
+CREATE TABLE paper_author (
+    paper_id INTEGER NOT NULL REFERENCES paper(paper_id) ON DELETE CASCADE,
+    author_id INTEGER NOT NULL REFERENCES author(author_id) ON DELETE RESTRICT,
+    author_position INTEGER NOT NULL,
+    is_corresponding BOOLEAN NOT NULL DEFAULT FALSE,
+    PRIMARY KEY (paper_id, author_id),
+    UNIQUE (paper_id, author_position),
+    CONSTRAINT positive_author_position CHECK (author_position > 0)
+);
+-- result: statement executed
+
+-- 01_schema.sql, statement 32
+CREATE UNIQUE INDEX uq_one_corresponding_author_per_paper
+    ON paper_author (paper_id) WHERE is_corresponding = TRUE;
+-- result: statement executed
+
+-- 01_schema.sql, statement 33
+CREATE TABLE paper_version (
+    paper_id INTEGER NOT NULL REFERENCES paper(paper_id) ON DELETE CASCADE,
+    version_no INTEGER NOT NULL,
+    file_location TEXT NOT NULL,
+    uploaded_at TIMESTAMPTZ NOT NULL,
+    change_note TEXT,
+    PRIMARY KEY (paper_id, version_no),
+    CONSTRAINT positive_version_no CHECK (version_no > 0),
+    CONSTRAINT version_file_nonblank CHECK (LENGTH(TRIM(file_location)) > 0)
+);
+-- result: statement executed
+
+-- 01_schema.sql, statement 34
+CREATE TABLE review (
+    review_id INTEGER PRIMARY KEY,
+    paper_id INTEGER NOT NULL REFERENCES paper(paper_id) ON DELETE CASCADE,
+    reviewer_id INTEGER NOT NULL REFERENCES reviewer(reviewer_id) ON DELETE RESTRICT,
+    overall_score INTEGER NOT NULL,
+    recommendation VARCHAR(10) NOT NULL,
+    comments_for_authors TEXT NOT NULL,
+    confidential_comments TEXT,
+    review_submission_date DATE NOT NULL,
+    CONSTRAINT unique_review_per_reviewer_paper UNIQUE (paper_id, reviewer_id),
+    CONSTRAINT score_1_to_5 CHECK (overall_score BETWEEN 1 AND 5),
+    CONSTRAINT recommendation_value CHECK (recommendation IN ('accept', 'reject'))
+);
+-- result: statement executed
+
+-- 01_schema.sql, statement 35
+CREATE INDEX ix_review_reviewer ON review(reviewer_id);
+-- result: statement executed
+
+-- 01_schema.sql, statement 36
+CREATE INDEX ix_review_paper ON review(paper_id);
+-- result: statement executed
+
+
+========================================================================================
+TASK 2 | INSERT: execute numbered 02_seed.sql statements
+========================================================================================
+-- 02_seed.sql, statement 1
+INSERT INTO app_user (user_id, given_name, surname, email, affiliation, country, phone_number) VALUES
+ (1,'Arman','Armanov','arman.armanov@example.com','Nazarbayev University','Kazakhstan','+77010000001'),
+ (2,'Amina','Aminova','amina.aminova@example.com','Nazarbayev University','Kazakhstan','+77010000002'),
+ (3,'Dana','Sadykova','dana.sadykova@example.com','AITU','Kazakhstan',NULL),
+ (4,'Timur','Bekov','timur.bekov@example.com','Nazarbayev University','Kazakhstan','+77010000004'),
+ (5,'Aigerim','Nurlanova','aigerim.nurlanova@example.com','KBTU','Kazakhstan',NULL),
+ (6,'Bekzat','Oraz','bekzat.oraz@example.com','SDU','Kazakhstan',NULL),
+ (7,'Elena','Petrova','elena.petrova@example.com','Technical University Berlin','Germany',NULL),
+ (8,'Miras','Zhan','miras.zhan@example.com','Nazarbayev University','Kazakhstan',NULL),
+ (9,'Sofia','Kim','sofia.kim@example.com','ETH Zurich','Switzerland',NULL),
+ (10,'Nurlan','Kairat','nurlan.kairat@example.com','AITU','Kazakhstan',NULL),
+ (11,'Oliver','Reed','oliver.reed@example.com','Oxford University','United Kingdom',NULL),
+ (12,'Madina','Ussen','madina.ussen@example.com','KBTU','Kazakhstan',NULL),
+ (13,'Asel','Yermek','asel.yermek@example.com','Nazarbayev University','Kazakhstan',NULL),
+ (14,'Robert','Chen','robert.chen@example.com','University of Toronto','Canada',NULL),
+ (15,'Zhaniya','Ilyas','zhaniya.ilyas@example.com','Nazarbayev University','Kazakhstan',NULL);
+-- result: affected rows = 15
+
+-- 02_seed.sql, statement 2
+INSERT INTO author (author_id, orcid) VALUES
+ (2,'0000-0001-0000-0002'),(3,'0000-0001-0000-0003'),(4,NULL),
+ (6,NULL),(7,'0000-0001-0000-0007'),(8,NULL),(10,NULL),
+ (12,NULL),(14,'0000-0001-0000-0014');
+-- result: affected rows = 9
+
+-- 02_seed.sql, statement 3
+INSERT INTO author_research_area (author_id,area_label) VALUES
+ (2,'Machine Learning'),(2,'Databases'),(3,'AI'),(3,'Data Mining'),
+ (4,'Databases'),(6,'Cloud Computing'),(7,'Machine Learning'),
+ (8,'Databases'),(10,'Data Ethics'),(12,'NLP'),(14,'Computer Vision');
+-- result: affected rows = 11
+
+-- 02_seed.sql, statement 4
+INSERT INTO reviewer (reviewer_id,years_experience) VALUES
+ (1,7),(4,4),(5,6),(7,9),(9,5),(10,3),(11,2),(13,0),(15,1);
+-- result: affected rows = 9
+
+-- 02_seed.sql, statement 5
+INSERT INTO reviewer_expertise (reviewer_id,area_label) VALUES
+ (1,'Databases'),(1,'Machine Learning'),(4,'Databases'),
+ (5,'Databases'),(5,'Data Mining'),(7,'Machine Learning'),
+ (9,'Data Ethics'),(9,'Databases'),(10,'Databases'),
+ (11,'NLP'),(13,'Computer Vision'),(15,'Cloud Computing');
+-- result: affected rows = 12
+
+-- 02_seed.sql, statement 6
+INSERT INTO conference (conference_id,name,acronym,description,city,country,start_date,end_date,submission_deadline,review_deadline) VALUES
+ (101,'Astana Data Science Conference','ADSC27','Data systems and responsible machine learning','Astana','Kazakhstan','2027-04-10','2027-04-12','2027-01-20','2027-03-03'),
+ (102,'Global Digital Research Summit','GDRS27','International research on computing','Berlin','Germany','2027-06-20','2027-06-22','2027-03-10','2027-05-01'),
+ (103,'Astana Research Futures Forum','ARFF27','Small research forum without submissions yet','Astana','Kazakhstan','2027-08-15','2027-08-16','2027-05-01','2027-07-05');
+-- result: affected rows = 3
+
+-- 02_seed.sql, statement 7
+INSERT INTO conference_host (conference_id,host_name) VALUES
+ (101,'Nazarbayev University'),(101,'Astana IT University'),
+ (102,'Technical University Berlin'),(102,'Digital Research Institute'),
+ (103,'Nazarbayev University');
+-- result: affected rows = 5
+
+-- 02_seed.sql, statement 8
+INSERT INTO conference_reviewer (conference_id,reviewer_id) VALUES
+ (101,1),(101,4),(101,5),(101,7),(101,9),(101,10),(101,11),(101,13),(101,15),
+ (102,1),(102,4),(102,5),(102,7),(102,9),(102,10),(102,11),(102,15),
+ (103,1),(103,13);
+-- result: affected rows = 19
+
+-- 02_seed.sql, statement 9
+INSERT INTO track (track_id,conference_id,name,description,research_area,coordinator_id) VALUES
+ (1001,101,'AI and Data','AI and learning research','Machine Learning',1),
+ (1002,101,'Information Systems','Database systems and applications','Databases',4),
+ (1003,101,'Unassigned Topics','Deliberately empty track','Information Systems',5),
+ (2001,102,'Learning Systems','Scalable learning systems','Machine Learning',7),
+ (2002,102,'Responsible Data','Ethics and social impact','Data Ethics',9),
+ (3001,103,'Research Futures','Research roadmaps','Computer Vision',13);
+-- result: affected rows = 6
+
+-- 02_seed.sql, statement 10
+INSERT INTO conference_session (session_id,conference_id,title,session_date,start_time,end_time,room_label,chair_id) VALUES
+ (501,101,'Data and AI Talks','2027-04-10','09:00:00','10:30:00','A101',1),
+ (502,101,'Unused Astana Session','2027-04-10','11:00:00','12:30:00','A102',4),
+ (503,101,'Advanced Data','2027-04-11','13:00:00','14:30:00','A103',5),
+ (504,102,'International Research','2027-06-20','10:00:00','12:00:00','B201',7),
+ (505,103,'Research Planning','2027-08-15','09:00:00','11:00:00','C301',13),
+ (506,102,'Open Poster Discussion','2027-06-21','15:00:00','16:30:00','B202',9);
+-- result: affected rows = 6
+
+-- 02_seed.sql, statement 11
+INSERT INTO paper (paper_id,track_id,title,abstract,submission_date,status,session_id) VALUES
+ (1,1001,'Interpretable Machine Learning for Cities','This paper studies MACHINE LEARNING for urban analytics.','2027-01-03','accepted',501),
+ (2,1001,'A Withdrawn ML Benchmark','A benchmark study withdrawn after initial submission.','2027-01-04','withdrawn',NULL),
+ (3,1001,'A Withdrawn Data Pipeline','A study of pipeline systems withdrawn by the authors.','2027-01-04','withdrawn',NULL),
+ (4,1002,'Indexing Research Records','Explores better relational indexes for metadata.','2027-01-05','under review',NULL),
+ (5,1001,'Distributed Model Serving','Studies services for model inference at scale.','2027-01-06','submitted',NULL),
+ (6,1002,'Legacy Database Design','Evaluates older query processing methods.','2027-01-07','rejected',NULL),
+ (7,1001,'Trustworthy Visual AI','Presents an interpretable visual AI approach.','2027-01-08','accepted',NULL),
+ (8,2001,'Machine Learning at the Edge','Studies machine learning in low-power devices.','2027-03-01','accepted',504),
+ (9,2001,'Neural Network Compression','Examines neural network compression quality.','2027-03-02','rejected',NULL),
+ (10,2002,'Data Ethics in Recommenders','Explores fairness in recommendation systems.','2027-03-03','accepted',NULL),
+ (11,2002,'Accountable Data Governance','Audits public data governance practices.','2027-03-04','under review',NULL),
+ (12,2001,'Privacy Aware Model Deployment','Investigates practical private model deployment.','2027-03-05','accepted',504),
+ (13,1002,'Exploratory Query Planning','Presents proposed query-planning heuristics.','2027-01-09','submitted',NULL),
+ (14,2002,'A Withdrawn Ethics Survey','Survey results withdrawn due to methodological concerns.','2027-03-06','withdrawn',NULL);
+-- result: affected rows = 14
+
+-- 02_seed.sql, statement 12
+INSERT INTO paper_keyword (paper_id,keyword) VALUES
+ (1,'Machine Learning'),(1,'Explainability'),(2,'Benchmarking'),(2,'Machine Learning'),
+ (3,'Pipelines'),(4,'Databases'),(4,'Indexing'),(5,'Cloud Computing'),(5,'Inference'),
+ (6,'Database Systems'),(7,'Computer Vision'),(7,'Trust'),
+ (8,'Machine Learning'),(8,'Edge Devices'),(9,'Neural Networks'),
+ (10,'Ethics'),(10,'Fairness'),(11,'Governance'),
+ (12,'Privacy'),(12,'Deployment'),(13,'Query Optimization'),(14,'Ethics');
+-- result: affected rows = 22
+
+-- 02_seed.sql, statement 13
+INSERT INTO paper_author (paper_id,author_id,author_position,is_corresponding) VALUES
+ (1,2,1,TRUE),(1,3,2,FALSE),
+ (2,2,1,TRUE),(2,8,2,FALSE),
+ (3,2,1,TRUE),(3,14,2,FALSE),
+ (4,3,1,TRUE),(4,6,2,FALSE),
+ (5,6,1,TRUE),(5,8,2,FALSE),
+ (6,8,1,TRUE),
+ (7,7,1,TRUE),(7,3,2,FALSE),
+ (8,14,1,TRUE),(8,12,2,FALSE),
+ (9,12,1,TRUE),
+ (10,4,1,TRUE),(10,10,2,FALSE),
+ (11,14,1,TRUE),
+ (12,10,1,TRUE),(12,2,2,FALSE),
+ (13,3,1,TRUE),
+ (14,6,1,TRUE);
+-- result: affected rows = 23
+
+-- 02_seed.sql, statement 14
+INSERT INTO paper_version (paper_id,version_no,file_location,uploaded_at,change_note) VALUES
+ (1,1,'papers/1/v1.pdf','2027-01-03 09:00:00+00','Initial submission'),
+ (1,3,'papers/1/v3.pdf','2027-01-04 10:00:00+00','Improved results'),
+ (1,5,'papers/1/v5.pdf','2027-01-05 11:00:00+00','Final revision'),
+ (2,1,'papers/2/v1.pdf','2027-01-04 11:00:00+00',NULL),
+ (2,2,'papers/2/v2.pdf','2027-01-05 09:00:00+00','Before withdrawal'),
+ (3,1,'papers/3/v1.pdf','2027-01-04 12:00:00+00',NULL),
+ (4,1,'papers/4/v1.pdf','2027-01-05 09:00:00+00',NULL),
+ (4,2,'papers/4/v2.pdf','2027-01-07 09:00:00+00','Updated figures'),
+ (5,1,'papers/5/v1.pdf','2027-01-06 12:00:00+00',NULL),
+ (6,1,'papers/6/v1.pdf','2027-01-07 12:00:00+00',NULL),
+ (7,1,'papers/7/v1.pdf','2027-01-08 12:00:00+00',NULL),
+ (8,1,'papers/8/v1.pdf','2027-03-01 09:00:00+00',NULL),
+ (8,2,'papers/8/v2.pdf','2027-03-06 09:00:00+00','Camera ready'),
+ (9,1,'papers/9/v1.pdf','2027-03-02 13:00:00+00',NULL),
+ (10,1,'papers/10/v1.pdf','2027-03-03 13:00:00+00',NULL),
+ (11,1,'papers/11/v1.pdf','2027-03-04 13:00:00+00',NULL),
+ (12,1,'papers/12/v1.pdf','2027-03-05 13:00:00+00',NULL),
+ (13,1,'papers/13/v1.pdf','2027-01-09 13:00:00+00',NULL),
+ (14,1,'papers/14/v1.pdf','2027-03-06 13:00:00+00',NULL);
+-- result: affected rows = 19
+
+-- 02_seed.sql, statement 15
+INSERT INTO review (review_id,paper_id,reviewer_id,overall_score,recommendation,comments_for_authors,confidential_comments,review_submission_date) VALUES
+ (1,1,1,5,'accept','Strong contribution.',NULL,'2027-02-10'),
+ (2,1,4,4,'accept','Well motivated.',NULL,'2027-02-11'),
+ (3,1,5,5,'accept','Good evaluations.','Strong accept','2027-02-12'),
+ (4,4,1,3,'reject','More measurements are needed.',NULL,'2027-02-10'),
+ (5,4,5,4,'accept','Promising approach.',NULL,'2027-02-11'),
+ (6,4,7,3,'reject','Please clarify novelty.',NULL,'2027-02-13'),
+ (7,5,4,3,'reject','Missing baseline.',NULL,'2027-02-14'),
+ (8,5,9,3,'reject','Improve benchmarks.',NULL,'2027-02-15'),
+ (9,6,1,2,'reject','Limited contribution.',NULL,'2027-02-14'),
+ (10,6,5,2,'reject','Weak evaluation.',NULL,'2027-02-15'),
+ (11,7,1,5,'accept','Clear writing.',NULL,'2027-02-14'),
+ (12,7,5,4,'accept','Interesting and convincing.',NULL,'2027-02-15'),
+ (13,8,4,4,'accept','Relevant to practitioners.',NULL,'2027-04-10'),
+ (14,8,5,5,'accept','Thorough experiments.',NULL,'2027-04-11'),
+ (15,8,15,4,'accept','Useful results.',NULL,'2027-04-12'),
+ (16,9,7,2,'reject','Not enough evidence.',NULL,'2027-04-10'),
+ (17,9,9,3,'reject','Needs validation.',NULL,'2027-04-11'),
+ (18,10,9,5,'accept','Significant ethical insights.',NULL,'2027-04-12'),
+ (19,10,1,4,'accept','Well reasoned.',NULL,'2027-04-13'),
+ (20,11,9,3,'reject','Improve methodology.',NULL,'2027-04-12'),
+ (21,12,1,5,'accept','Deployable solution.',NULL,'2027-04-12'),
+ (22,12,7,4,'accept','Strong experiments.',NULL,'2027-04-13'),
+ (23,13,5,3,'reject','Provide more detail.',NULL,'2027-02-12'),
+ (24,14,7,3,'reject','Survey requires stronger evidence.',NULL,'2027-04-14'),
+ (25,2,1,3,'reject','An early completed review before author withdrawal.',NULL,'2027-02-12'),
+ (26,3,4,2,'reject','A completed review prior to withdrawal.',NULL,'2027-02-12');
+-- result: affected rows = 26
+
+ROW COUNTS FOR EVERY TABLE:
+SQL:
+SELECT COUNT(*) AS rows FROM app_user;
+RESULT: 1 row(s)
+  {'table': 'app_user', 'rows': 15}
+SQL:
+SELECT COUNT(*) AS rows FROM author;
+RESULT: 1 row(s)
+  {'table': 'author', 'rows': 9}
+SQL:
+SELECT COUNT(*) AS rows FROM author_research_area;
+RESULT: 1 row(s)
+  {'table': 'author_research_area', 'rows': 11}
+SQL:
+SELECT COUNT(*) AS rows FROM reviewer;
+RESULT: 1 row(s)
+  {'table': 'reviewer', 'rows': 9}
+SQL:
+SELECT COUNT(*) AS rows FROM reviewer_expertise;
+RESULT: 1 row(s)
+  {'table': 'reviewer_expertise', 'rows': 12}
+SQL:
+SELECT COUNT(*) AS rows FROM conference;
+RESULT: 1 row(s)
+  {'table': 'conference', 'rows': 3}
+SQL:
+SELECT COUNT(*) AS rows FROM conference_host;
+RESULT: 1 row(s)
+  {'table': 'conference_host', 'rows': 5}
+SQL:
+SELECT COUNT(*) AS rows FROM conference_reviewer;
+RESULT: 1 row(s)
+  {'table': 'conference_reviewer', 'rows': 19}
+SQL:
+SELECT COUNT(*) AS rows FROM track;
+RESULT: 1 row(s)
+  {'table': 'track', 'rows': 6}
+SQL:
+SELECT COUNT(*) AS rows FROM conference_session;
+RESULT: 1 row(s)
+  {'table': 'conference_session', 'rows': 6}
+SQL:
+SELECT COUNT(*) AS rows FROM paper;
+RESULT: 1 row(s)
+  {'table': 'paper', 'rows': 14}
+SQL:
+SELECT COUNT(*) AS rows FROM paper_keyword;
+RESULT: 1 row(s)
+  {'table': 'paper_keyword', 'rows': 22}
+SQL:
+SELECT COUNT(*) AS rows FROM paper_author;
+RESULT: 1 row(s)
+  {'table': 'paper_author', 'rows': 23}
+SQL:
+SELECT COUNT(*) AS rows FROM paper_version;
+RESULT: 1 row(s)
+  {'table': 'paper_version', 'rows': 19}
+SQL:
+SELECT COUNT(*) AS rows FROM review;
+RESULT: 1 row(s)
+  {'table': 'review', 'rows': 26}
+SEED INTEGRITY CHECKS: PASS (zero violations)
+
+========================================================================================
+TASK Part 1 validations | required business rules exercised in transactions
+========================================================================================
+reject self-review on save: PASS - Self-review forbidden: reviewer is an author of this paper
+reject authorship edit creating self-review: PASS - Author change forbidden: existing self-review would result
+reject session for submitted paper: PASS - Only accepted papers may be scheduled
+reject cross-conference session: PASS - Paper track and session must belong to the same conference
+
+========================================================================================
+TASK 3.1 | independent mutation: before -> after -> ROLLBACK
+========================================================================================
+BEFORE (original seed):
+SQL:
+SELECT user_id, given_name, surname, email, phone_number
+           FROM app_user WHERE email=:email;
+BOUND PARAMETERS: {'email': 'arman.armanov@example.com'}
+RESULT: 1 row(s)
+  {'user_id': 1,
+ 'given_name': 'Arman',
+ 'surname': 'Armanov',
+ 'email': 'arman.armanov@example.com',
+ 'phone_number': '+77010000001'}
+SQL:
+UPDATE app_user
+             SET phone_number = :phone_number
+             WHERE email = :email;
+BOUND PARAMETERS: {'phone_number': '+77773414141', 'email': 'arman.armanov@example.com'}
+AFFECTED ROWS: 1
+AFTER (inside uncommitted transaction):
+SQL:
+SELECT user_id, given_name, surname, email, phone_number
+           FROM app_user WHERE email=:email;
+BOUND PARAMETERS: {'email': 'arman.armanov@example.com'}
+RESULT: 1 row(s)
+  {'user_id': 1,
+ 'given_name': 'Arman',
+ 'surname': 'Armanov',
+ 'email': 'arman.armanov@example.com',
+ 'phone_number': '+77773414141'}
+ROLLBACK EXECUTED; original seed restored for all independent tasks.
+
+========================================================================================
+TASK 3.2 | independent mutation: before -> after -> ROLLBACK
+========================================================================================
+BEFORE (original seed):
+SQL:
+SELECT conference_id, acronym, city, review_deadline
+           FROM conference ORDER BY conference_id;
+RESULT: 3 row(s)
+  {'conference_id': 101, 'acronym': 'ADSC27', 'city': 'Astana', 'review_deadline': datetime.date(2027, 3, 3)}
+  {'conference_id': 102, 'acronym': 'GDRS27', 'city': 'Berlin', 'review_deadline': datetime.date(2027, 5, 1)}
+  {'conference_id': 103, 'acronym': 'ARFF27', 'city': 'Astana', 'review_deadline': datetime.date(2027, 7, 5)}
+SQL:
+UPDATE conference
+             SET review_deadline = review_deadline +
+                 CASE WHEN LOWER(city) = LOWER(:target_city)
+                   THEN 7 ELSE 3 END;
+BOUND PARAMETERS: {'target_city': 'Astana'}
+AFFECTED ROWS: 3
+AFTER (inside uncommitted transaction):
+SQL:
+SELECT conference_id, acronym, city, review_deadline
+           FROM conference ORDER BY conference_id;
+RESULT: 3 row(s)
+  {'conference_id': 101, 'acronym': 'ADSC27', 'city': 'Astana', 'review_deadline': datetime.date(2027, 3, 10)}
+  {'conference_id': 102, 'acronym': 'GDRS27', 'city': 'Berlin', 'review_deadline': datetime.date(2027, 5, 4)}
+  {'conference_id': 103, 'acronym': 'ARFF27', 'city': 'Astana', 'review_deadline': datetime.date(2027, 7, 12)}
+ROLLBACK EXECUTED; original seed restored for all independent tasks.
+
+========================================================================================
+TASK 4.1 | independent mutation: before -> after -> ROLLBACK
+========================================================================================
+BEFORE (original seed):
+SQL:
+SELECT p.paper_id,p.title, p.status,
+             (SELECT COUNT(*) FROM paper_author WHERE paper_id=p.paper_id) AS authors,
+             (SELECT COUNT(*) FROM paper_keyword WHERE paper_id=p.paper_id) AS keywords,
+             (SELECT COUNT(*) FROM paper_version WHERE paper_id=p.paper_id) AS versions,
+             (SELECT COUNT(*) FROM review WHERE paper_id=p.paper_id) AS reviews
+           FROM paper p
+           WHERE p.paper_id IN (2,3) ORDER BY p.paper_id;
+RESULT: 2 row(s)
+  {'paper_id': 2,
+ 'title': 'A Withdrawn ML Benchmark',
+ 'status': 'withdrawn',
+ 'authors': 2,
+ 'keywords': 2,
+ 'versions': 2,
+ 'reviews': 1}
+  {'paper_id': 3,
+ 'title': 'A Withdrawn Data Pipeline',
+ 'status': 'withdrawn',
+ 'authors': 2,
+ 'keywords': 1,
+ 'versions': 1,
+ 'reviews': 1}
+SQL:
+DELETE FROM paper WHERE status = :status
+             AND EXISTS (
+                SELECT 1 FROM paper_author AS pa
+                JOIN app_user AS au ON au.user_id = pa.author_id
+                WHERE pa.paper_id = paper.paper_id
+                  AND pa.is_corresponding = TRUE
+                  AND au.email = :email
+             );
+BOUND PARAMETERS: {'status': 'withdrawn', 'email': 'amina.aminova@example.com'}
+AFFECTED ROWS: 2
+AFTER (inside uncommitted transaction):
+SQL:
+SELECT p.paper_id,p.title, p.status,
+             (SELECT COUNT(*) FROM paper_author WHERE paper_id=p.paper_id) AS authors,
+             (SELECT COUNT(*) FROM paper_keyword WHERE paper_id=p.paper_id) AS keywords,
+             (SELECT COUNT(*) FROM paper_version WHERE paper_id=p.paper_id) AS versions,
+             (SELECT COUNT(*) FROM review WHERE paper_id=p.paper_id) AS reviews
+           FROM paper p
+           WHERE p.paper_id IN (2,3) ORDER BY p.paper_id;
+RESULT: 0 row(s)
+REMAINING DEPENDENT paper_author: 0
+REMAINING DEPENDENT paper_keyword: 0
+REMAINING DEPENDENT paper_version: 0
+REMAINING DEPENDENT review: 0
+ROLLBACK EXECUTED; original seed restored for all independent tasks.
+
+========================================================================================
+TASK 4.2 | independent mutation: before -> after -> ROLLBACK
+========================================================================================
+BEFORE (original seed):
+SQL:
+SELECT s.session_id,s.title,c.city,
+             (SELECT COUNT(*) FROM paper p WHERE p.session_id=s.session_id) AS assigned_papers
+           FROM conference_session s JOIN conference c ON s.conference_id=c.conference_id
+           WHERE s.session_id IN (502,505) ORDER BY s.session_id;
+RESULT: 2 row(s)
+  {'session_id': 502, 'title': 'Unused Astana Session', 'city': 'Astana', 'assigned_papers': 0}
+  {'session_id': 505, 'title': 'Research Planning', 'city': 'Astana', 'assigned_papers': 0}
+SQL:
+DELETE FROM conference_session
+             WHERE conference_id IN
+                (SELECT conference_id FROM conference WHERE LOWER(city) = LOWER(:city))
+               AND NOT EXISTS (
+                  SELECT 1 FROM paper WHERE paper.session_id = conference_session.session_id
+               );
+BOUND PARAMETERS: {'city': 'Astana'}
+AFFECTED ROWS: 3
+AFTER (inside uncommitted transaction):
+SQL:
+SELECT s.session_id,s.title,c.city,
+             (SELECT COUNT(*) FROM paper p WHERE p.session_id=s.session_id) AS assigned_papers
+           FROM conference_session s JOIN conference c ON s.conference_id=c.conference_id
+           WHERE s.session_id IN (502,505) ORDER BY s.session_id;
+RESULT: 0 row(s)
+Nonempty Astana session 501 persists: 1
+ROLLBACK EXECUTED; original seed restored for all independent tasks.
+
+========================================================================================
+TASK 5.1 | Accepted papers and corresponding authors
+========================================================================================
+SQL:
+SELECT p.paper_id, p.title AS paper_title,
+                    au.given_name || ' ' || au.surname AS corresponding_author_name,
+                    au.email AS corresponding_author_email,
+                    t.name AS track_name, c.conference_id, c.acronym AS conference_acronym
+             FROM paper p
+             JOIN track t ON t.track_id = p.track_id
+             JOIN conference c ON c.conference_id = t.conference_id
+             JOIN paper_author pa ON pa.paper_id = p.paper_id AND pa.is_corresponding = TRUE
+             JOIN app_user au ON au.user_id = pa.author_id
+             WHERE p.status = :status
+             ORDER BY p.paper_id;
+BOUND PARAMETERS: {'status': 'accepted'}
+RESULT: 5 row(s)
+  {'paper_id': 1,
+ 'paper_title': 'Interpretable Machine Learning for Cities',
+ 'corresponding_author_name': 'Amina Aminova',
+ 'corresponding_author_email': 'amina.aminova@example.com',
+ 'track_name': 'AI and Data',
+ 'conference_id': 101,
+ 'conference_acronym': 'ADSC27'}
+  {'paper_id': 7,
+ 'paper_title': 'Trustworthy Visual AI',
+ 'corresponding_author_name': 'Elena Petrova',
+ 'corresponding_author_email': 'elena.petrova@example.com',
+ 'track_name': 'AI and Data',
+ 'conference_id': 101,
+ 'conference_acronym': 'ADSC27'}
+  {'paper_id': 8,
+ 'paper_title': 'Machine Learning at the Edge',
+ 'corresponding_author_name': 'Robert Chen',
+ 'corresponding_author_email': 'robert.chen@example.com',
+ 'track_name': 'Learning Systems',
+ 'conference_id': 102,
+ 'conference_acronym': 'GDRS27'}
+  {'paper_id': 10,
+ 'paper_title': 'Data Ethics in Recommenders',
+ 'corresponding_author_name': 'Timur Bekov',
+ 'corresponding_author_email': 'timur.bekov@example.com',
+ 'track_name': 'Responsible Data',
+ 'conference_id': 102,
+ 'conference_acronym': 'GDRS27'}
+  {'paper_id': 12,
+ 'paper_title': 'Privacy Aware Model Deployment',
+ 'corresponding_author_name': 'Nurlan Kairat',
+ 'corresponding_author_email': 'nurlan.kairat@example.com',
+ 'track_name': 'Learning Systems',
+ 'conference_id': 102,
+ 'conference_acronym': 'GDRS27'}
+
+========================================================================================
+TASK 5.2 | Case-insensitive abstract phrase
+========================================================================================
+SQL:
+SELECT paper_id, title AS paper_title
+             FROM paper
+             WHERE LOWER(abstract) LIKE '%' || LOWER(:phrase) || '%'
+             ORDER BY paper_id;
+BOUND PARAMETERS: {'phrase': 'machine learning'}
+RESULT: 2 row(s)
+  {'paper_id': 1, 'paper_title': 'Interpretable Machine Learning for Cities'}
+  {'paper_id': 8, 'paper_title': 'Machine Learning at the Edge'}
+
+========================================================================================
+TASK 5.3 | Versions, highest number first
+========================================================================================
+SQL:
+SELECT version_no, file_location, uploaded_at
+             FROM paper_version
+             WHERE paper_id = :paper_id
+             ORDER BY version_no DESC;
+BOUND PARAMETERS: {'paper_id': 1}
+RESULT: 3 row(s)
+  {'version_no': 5,
+ 'file_location': 'papers/1/v5.pdf',
+ 'uploaded_at': datetime.datetime(2027, 1, 5, 11, 0, tzinfo=datetime.timezone.utc)}
+  {'version_no': 3,
+ 'file_location': 'papers/1/v3.pdf',
+ 'uploaded_at': datetime.datetime(2027, 1, 4, 10, 0, tzinfo=datetime.timezone.utc)}
+  {'version_no': 1,
+ 'file_location': 'papers/1/v1.pdf',
+ 'uploaded_at': datetime.datetime(2027, 1, 3, 9, 0, tzinfo=datetime.timezone.utc)}
+
+========================================================================================
+TASK 5.4 | Conference reviewer pool with expertise and experience
+========================================================================================
+SQL:
+SELECT DISTINCT r.reviewer_id,
+                    u.given_name || ' ' || u.surname AS full_name,
+                    u.email
+             FROM reviewer r
+             JOIN app_user u ON u.user_id = r.reviewer_id
+             JOIN conference_reviewer cr ON cr.reviewer_id = r.reviewer_id
+             JOIN reviewer_expertise re ON re.reviewer_id = r.reviewer_id
+             WHERE cr.conference_id = :conference_id
+               AND re.area_label = :expertise
+               AND r.years_experience >= :min_years
+             ORDER BY r.reviewer_id;
+BOUND PARAMETERS: {'conference_id': 101, 'expertise': 'Databases', 'min_years': 3}
+RESULT: 5 row(s)
+  {'reviewer_id': 1, 'full_name': 'Arman Armanov', 'email': 'arman.armanov@example.com'}
+  {'reviewer_id': 4, 'full_name': 'Timur Bekov', 'email': 'timur.bekov@example.com'}
+  {'reviewer_id': 5, 'full_name': 'Aigerim Nurlanova', 'email': 'aigerim.nurlanova@example.com'}
+  {'reviewer_id': 9, 'full_name': 'Sofia Kim', 'email': 'sofia.kim@example.com'}
+  {'reviewer_id': 10, 'full_name': 'Nurlan Kairat', 'email': 'nurlan.kairat@example.com'}
+
+========================================================================================
+TASK 6.1 | Distinct paper/author counts including empty tracks
+========================================================================================
+SQL:
+SELECT t.track_id, t.name AS track_name, t.conference_id,
+                    COUNT(DISTINCT p.paper_id) AS paper_count,
+                    COUNT(DISTINCT pa.author_id) AS distinct_author_count
+             FROM track t
+             LEFT JOIN paper p ON p.track_id = t.track_id
+             LEFT JOIN paper_author pa ON pa.paper_id = p.paper_id
+             GROUP BY t.track_id, t.name, t.conference_id
+             ORDER BY t.track_id;
+RESULT: 6 row(s)
+  {'track_id': 1001, 'track_name': 'AI and Data', 'conference_id': 101, 'paper_count': 5, 'distinct_author_count': 6}
+  {'track_id': 1002,
+ 'track_name': 'Information Systems',
+ 'conference_id': 101,
+ 'paper_count': 3,
+ 'distinct_author_count': 3}
+  {'track_id': 1003,
+ 'track_name': 'Unassigned Topics',
+ 'conference_id': 101,
+ 'paper_count': 0,
+ 'distinct_author_count': 0}
+  {'track_id': 2001, 'track_name': 'Learning Systems', 'conference_id': 102, 'paper_count': 3, 'distinct_author_count': 4}
+  {'track_id': 2002, 'track_name': 'Responsible Data', 'conference_id': 102, 'paper_count': 3, 'distinct_author_count': 4}
+  {'track_id': 3001, 'track_name': 'Research Futures', 'conference_id': 103, 'paper_count': 0, 'distinct_author_count': 0}
+
+========================================================================================
+TASK 6.2 | Reviewer counts and average including zero-review reviewers
+========================================================================================
+SQL:
+SELECT r.reviewer_id,
+                    u.given_name || ' ' || u.surname AS full_name,
+                    COUNT(rv.review_id) AS review_count,
+                    ROUND(AVG(rv.overall_score), 2) AS avg_overall_score
+             FROM reviewer r
+             JOIN app_user u ON u.user_id = r.reviewer_id
+             LEFT JOIN review rv ON rv.reviewer_id = r.reviewer_id
+             GROUP BY r.reviewer_id, u.given_name, u.surname
+             ORDER BY r.reviewer_id;
+RESULT: 9 row(s)
+  {'reviewer_id': 1, 'full_name': 'Arman Armanov', 'review_count': 7, 'avg_overall_score': Decimal('3.86')}
+  {'reviewer_id': 4, 'full_name': 'Timur Bekov', 'review_count': 4, 'avg_overall_score': Decimal('3.25')}
+  {'reviewer_id': 5, 'full_name': 'Aigerim Nurlanova', 'review_count': 6, 'avg_overall_score': Decimal('3.83')}
+  {'reviewer_id': 7, 'full_name': 'Elena Petrova', 'review_count': 4, 'avg_overall_score': Decimal('3.00')}
+  {'reviewer_id': 9, 'full_name': 'Sofia Kim', 'review_count': 4, 'avg_overall_score': Decimal('3.50')}
+  {'reviewer_id': 10, 'full_name': 'Nurlan Kairat', 'review_count': 0, 'avg_overall_score': None}
+  {'reviewer_id': 11, 'full_name': 'Oliver Reed', 'review_count': 0, 'avg_overall_score': None}
+  {'reviewer_id': 13, 'full_name': 'Asel Yermek', 'review_count': 0, 'avg_overall_score': None}
+  {'reviewer_id': 15, 'full_name': 'Zhaniya Ilyas', 'review_count': 1, 'avg_overall_score': Decimal('4.00')}
+
+========================================================================================
+TASK 6.3 | Conference counts and mean scores without fan-out
+========================================================================================
+SQL:
+WITH paper_counts AS (
+               SELECT t.conference_id,
+                      COUNT(p.paper_id) AS total_papers,
+                      COUNT(CASE WHEN p.status = 'accepted' THEN 1 END) AS accepted_papers
+               FROM track t LEFT JOIN paper p ON p.track_id = t.track_id
+               GROUP BY t.conference_id
+             ), review_scores AS (
+               SELECT t.conference_id,
+                      AVG(r.overall_score) AS avg_score
+               FROM track t JOIN paper p ON p.track_id = t.track_id
+               JOIN review r ON r.paper_id = p.paper_id
+               GROUP BY t.conference_id
+             )
+             SELECT c.conference_id, c.acronym,
+                    COALESCE(pc.total_papers, 0) AS paper_count,
+                    COALESCE(pc.accepted_papers, 0) AS accepted_paper_count,
+                    ROUND(rs.avg_score, 2) AS avg_overall_review_score
+             FROM conference c
+             LEFT JOIN paper_counts pc ON pc.conference_id = c.conference_id
+             LEFT JOIN review_scores rs ON rs.conference_id = c.conference_id
+             ORDER BY c.conference_id;
+RESULT: 3 row(s)
+  {'conference_id': 101,
+ 'acronym': 'ADSC27',
+ 'paper_count': 8,
+ 'accepted_paper_count': 2,
+ 'avg_overall_review_score': Decimal('3.40')}
+  {'conference_id': 102,
+ 'acronym': 'GDRS27',
+ 'paper_count': 6,
+ 'accepted_paper_count': 3,
+ 'avg_overall_review_score': Decimal('3.82')}
+  {'conference_id': 103,
+ 'acronym': 'ARFF27',
+ 'paper_count': 0,
+ 'accepted_paper_count': 0,
+ 'avg_overall_review_score': None}
+
+========================================================================================
+TASK 6.4 | Above-global-average review counts (including zeros in average)
+========================================================================================
+SQL:
+WITH reviewer_counts AS (
+                SELECT rv.reviewer_id, COUNT(r.review_id) AS review_count
+                FROM reviewer rv
+                LEFT JOIN review r ON r.reviewer_id = rv.reviewer_id
+                GROUP BY rv.reviewer_id
+             ), global_average AS (
+                SELECT AVG(review_count * 1.0) AS overall_avg
+                FROM reviewer_counts
+             )
+             SELECT rc.reviewer_id,
+                    u.given_name || ' ' || u.surname AS full_name,
+                    rc.review_count,
+                    ROUND(ga.overall_avg, 2) AS overall_average
+             FROM reviewer_counts rc
+             JOIN app_user u ON u.user_id = rc.reviewer_id
+             CROSS JOIN global_average ga
+             WHERE rc.review_count > ga.overall_avg
+             ORDER BY rc.review_count DESC, rc.reviewer_id;
+RESULT: 5 row(s)
+  {'reviewer_id': 1, 'full_name': 'Arman Armanov', 'review_count': 7, 'overall_average': Decimal('2.89')}
+  {'reviewer_id': 5, 'full_name': 'Aigerim Nurlanova', 'review_count': 6, 'overall_average': Decimal('2.89')}
+  {'reviewer_id': 4, 'full_name': 'Timur Bekov', 'review_count': 4, 'overall_average': Decimal('2.89')}
+  {'reviewer_id': 7, 'full_name': 'Elena Petrova', 'review_count': 4, 'overall_average': Decimal('2.89')}
+  {'reviewer_id': 9, 'full_name': 'Sofia Kim', 'review_count': 4, 'overall_average': Decimal('2.89')}
+
+========================================================================================
+TASK 7 | Acceptance rate over accepted + rejected only
+========================================================================================
+SQL:
+WITH decisions AS (
+          SELECT c.conference_id, c.acronym,
+                 COUNT(CASE WHEN p.status = 'accepted' THEN 1 END) AS accepted_count,
+                 COUNT(CASE WHEN p.status = 'rejected' THEN 1 END) AS rejected_count
+          FROM conference c
+          LEFT JOIN track t ON t.conference_id = c.conference_id
+          LEFT JOIN paper p ON p.track_id = t.track_id
+          GROUP BY c.conference_id, c.acronym
+        )
+        SELECT conference_id, acronym, accepted_count, rejected_count,
+               CASE WHEN accepted_count + rejected_count = 0 THEN NULL
+                    ELSE ROUND(100.0 * accepted_count /
+                         (accepted_count + rejected_count), 2)
+               END AS acceptance_rate_percent
+        FROM decisions
+        ORDER BY conference_id;
+RESULT: 3 row(s)
+  {'conference_id': 101,
+ 'acronym': 'ADSC27',
+ 'accepted_count': 2,
+ 'rejected_count': 1,
+ 'acceptance_rate_percent': Decimal('66.67')}
+  {'conference_id': 102,
+ 'acronym': 'GDRS27',
+ 'accepted_count': 3,
+ 'rejected_count': 1,
+ 'acceptance_rate_percent': Decimal('75.00')}
+  {'conference_id': 103, 'acronym': 'ARFF27', 'accepted_count': 0, 'rejected_count': 0, 'acceptance_rate_percent': None}
+
+========================================================================================
+TASK 8 / CREATE VIEW | execute 03_view.sql (non-materialized)
+========================================================================================
+-- 03_view.sql, statement 1
+CREATE OR REPLACE VIEW accepted_paper_schedule AS
+SELECT p.paper_id,
+       p.title AS paper_title,
+       c.conference_id,
+       c.acronym AS conference_acronym,
+       t.name AS track_name,
+       s.session_id,
+       s.title AS session_title,
+       s.session_date,
+       s.start_time,
+       s.end_time,
+       s.room_label,
+       chair.given_name || ' ' || chair.surname AS chair_full_name,
+       corresponding_user.given_name || ' ' || corresponding_user.surname AS corresponding_author_full_name,
+       corresponding_user.email AS corresponding_author_email
+FROM paper AS p
+JOIN track AS t ON t.track_id = p.track_id
+JOIN conference AS c ON c.conference_id = t.conference_id
+JOIN conference_session AS s ON s.session_id = p.session_id
+    AND s.conference_id = c.conference_id
+JOIN app_user AS chair ON chair.user_id = s.chair_id
+JOIN paper_author AS pa ON pa.paper_id = p.paper_id AND pa.is_corresponding = TRUE
+JOIN app_user AS corresponding_user ON corresponding_user.user_id = pa.author_id
+WHERE p.status = 'accepted' AND p.session_id IS NOT NULL;
+-- result: statement executed
+
+
+========================================================================================
+TASK 8 | Ordered non-materialized accepted paper schedule
+========================================================================================
+SQL:
+SELECT paper_id, paper_title, conference_id, conference_acronym,
+               track_name, session_id, session_title, session_date,
+               start_time, end_time, room_label, chair_full_name,
+               corresponding_author_full_name, corresponding_author_email
+        FROM accepted_paper_schedule
+        ORDER BY conference_id, session_date, start_time, session_id, paper_id;
+RESULT: 3 row(s)
+  {'paper_id': 1,
+ 'paper_title': 'Interpretable Machine Learning for Cities',
+ 'conference_id': 101,
+ 'conference_acronym': 'ADSC27',
+ 'track_name': 'AI and Data',
+ 'session_id': 501,
+ 'session_title': 'Data and AI Talks',
+ 'session_date': datetime.date(2027, 4, 10),
+ 'start_time': datetime.time(9, 0),
+ 'end_time': datetime.time(10, 30),
+ 'room_label': 'A101',
+ 'chair_full_name': 'Arman Armanov',
+ 'corresponding_author_full_name': 'Amina Aminova',
+ 'corresponding_author_email': 'amina.aminova@example.com'}
+  {'paper_id': 8,
+ 'paper_title': 'Machine Learning at the Edge',
+ 'conference_id': 102,
+ 'conference_acronym': 'GDRS27',
+ 'track_name': 'Learning Systems',
+ 'session_id': 504,
+ 'session_title': 'International Research',
+ 'session_date': datetime.date(2027, 6, 20),
+ 'start_time': datetime.time(10, 0),
+ 'end_time': datetime.time(12, 0),
+ 'room_label': 'B201',
+ 'chair_full_name': 'Elena Petrova',
+ 'corresponding_author_full_name': 'Robert Chen',
+ 'corresponding_author_email': 'robert.chen@example.com'}
+  {'paper_id': 12,
+ 'paper_title': 'Privacy Aware Model Deployment',
+ 'conference_id': 102,
+ 'conference_acronym': 'GDRS27',
+ 'track_name': 'Learning Systems',
+ 'session_id': 504,
+ 'session_title': 'International Research',
+ 'session_date': datetime.date(2027, 6, 20),
+ 'start_time': datetime.time(10, 0),
+ 'end_time': datetime.time(12, 0),
+ 'room_label': 'B201',
+ 'chair_full_name': 'Elena Petrova',
+ 'corresponding_author_full_name': 'Nurlan Kairat',
+ 'corresponding_author_email': 'nurlan.kairat@example.com'}
+FINAL BASELINE TABLE COUNTS (all mutations were rolled back):
+SQL:
+SELECT COUNT(*) AS rows FROM app_user;
+RESULT: 1 row(s)
+  {'table': 'app_user', 'rows': 15}
+SQL:
+SELECT COUNT(*) AS rows FROM author;
+RESULT: 1 row(s)
+  {'table': 'author', 'rows': 9}
+SQL:
+SELECT COUNT(*) AS rows FROM author_research_area;
+RESULT: 1 row(s)
+  {'table': 'author_research_area', 'rows': 11}
+SQL:
+SELECT COUNT(*) AS rows FROM reviewer;
+RESULT: 1 row(s)
+  {'table': 'reviewer', 'rows': 9}
+SQL:
+SELECT COUNT(*) AS rows FROM reviewer_expertise;
+RESULT: 1 row(s)
+  {'table': 'reviewer_expertise', 'rows': 12}
+SQL:
+SELECT COUNT(*) AS rows FROM conference;
+RESULT: 1 row(s)
+  {'table': 'conference', 'rows': 3}
+SQL:
+SELECT COUNT(*) AS rows FROM conference_host;
+RESULT: 1 row(s)
+  {'table': 'conference_host', 'rows': 5}
+SQL:
+SELECT COUNT(*) AS rows FROM conference_reviewer;
+RESULT: 1 row(s)
+  {'table': 'conference_reviewer', 'rows': 19}
+SQL:
+SELECT COUNT(*) AS rows FROM track;
+RESULT: 1 row(s)
+  {'table': 'track', 'rows': 6}
+SQL:
+SELECT COUNT(*) AS rows FROM conference_session;
+RESULT: 1 row(s)
+  {'table': 'conference_session', 'rows': 6}
+SQL:
+SELECT COUNT(*) AS rows FROM paper;
+RESULT: 1 row(s)
+  {'table': 'paper', 'rows': 14}
+SQL:
+SELECT COUNT(*) AS rows FROM paper_keyword;
+RESULT: 1 row(s)
+  {'table': 'paper_keyword', 'rows': 22}
+SQL:
+SELECT COUNT(*) AS rows FROM paper_author;
+RESULT: 1 row(s)
+  {'table': 'paper_author', 'rows': 23}
+SQL:
+SELECT COUNT(*) AS rows FROM paper_version;
+RESULT: 1 row(s)
+  {'table': 'paper_version', 'rows': 19}
+SQL:
+SELECT COUNT(*) AS rows FROM review;
+RESULT: 1 row(s)
+  {'table': 'review', 'rows': 26}
+
+ALL PART 1-2 DEMONSTRATIONS FINISHED WITHOUT ASSERTION ERRORS.

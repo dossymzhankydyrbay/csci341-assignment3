@@ -1,0 +1,4 @@
+# REPLACE BOTH PLACEHOLDERS BEFORE COURSE SUBMISSION. THESE ARE NOT REAL URLs.
+Application URL: [DEPLOY THE APP, THEN INSERT THE REAL URL]
+Video URL (Google Drive; accessible to instructors/TAs): [RECORD AND UPLOAD VIDEO, THEN INSERT THE REAL URL]
+Demo account credentials: Not required (assignment explicitly permits no authentication).
